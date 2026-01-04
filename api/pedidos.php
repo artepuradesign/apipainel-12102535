@@ -17,6 +17,7 @@ require_once 'conexao.php';
  * GET /api/pedidos.php?email=xxx - Buscar pedidos por email do cliente
  * GET /api/pedidos.php?numero=xxx - Buscar pedido por número
  * POST /api/pedidos.php - Criar novo pedido
+ * PUT /api/pedidos.php?id=xxx ou ?numero=xxx - Atualizar status do pedido
  */
 
 try {
@@ -28,6 +29,9 @@ try {
             break;
         case 'POST':
             handlePost($pdo);
+            break;
+        case 'PUT':
+            handlePut($pdo);
             break;
         default:
             http_response_code(405);
@@ -138,6 +142,9 @@ function handlePost($pdo) {
     // Gerar número único do pedido
     $numero = generateOrderNumber($pdo);
     
+    // Status inicial - aguardando_pagamento se especificado, senão pendente
+    $status = isset($input['status']) ? $input['status'] : 'aguardando_pagamento';
+    
     try {
         $pdo->beginTransaction();
         
@@ -164,7 +171,7 @@ function handlePost($pdo) {
                 forma_pagamento,
                 status,
                 observacoes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         $stmt->execute([
@@ -186,6 +193,7 @@ function handlePost($pdo) {
             $input['frete'] ?? 0,
             $input['total'],
             $input['forma_pagamento'],
+            $status,
             $input['observacoes'] ?? null
         ]);
         
@@ -234,6 +242,92 @@ function handlePost($pdo) {
         $pdo->rollBack();
         throw $e;
     }
+}
+
+function handlePut($pdo) {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (!$input) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Dados inválidos']);
+        return;
+    }
+    
+    // Identificar pedido por id ou numero
+    $pedidoId = null;
+    $pedidoNumero = null;
+    
+    if (isset($_GET['id'])) {
+        $pedidoId = intval($_GET['id']);
+    } elseif (isset($_GET['numero'])) {
+        $pedidoNumero = trim($_GET['numero']);
+    } elseif (isset($input['numero'])) {
+        $pedidoNumero = trim($input['numero']);
+    } elseif (isset($input['id'])) {
+        $pedidoId = intval($input['id']);
+    }
+    
+    if (!$pedidoId && !$pedidoNumero) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'ID ou número do pedido é obrigatório']);
+        return;
+    }
+    
+    // Buscar pedido
+    if ($pedidoNumero) {
+        $stmt = $pdo->prepare("SELECT id FROM pedidos WHERE numero = ?");
+        $stmt->execute([$pedidoNumero]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$result) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Pedido não encontrado']);
+            return;
+        }
+        $pedidoId = $result['id'];
+    }
+    
+    // Montar campos para atualizar
+    $campos = [];
+    $valores = [];
+    
+    if (isset($input['status'])) {
+        $campos[] = "status = ?";
+        $valores[] = $input['status'];
+    }
+    
+    if (isset($input['codigo_rastreio'])) {
+        $campos[] = "codigo_rastreio = ?";
+        $valores[] = $input['codigo_rastreio'];
+    }
+    
+    if (isset($input['observacoes'])) {
+        $campos[] = "observacoes = ?";
+        $valores[] = $input['observacoes'];
+    }
+    
+    if (count($campos) === 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Nenhum campo para atualizar']);
+        return;
+    }
+    
+    $campos[] = "updated_at = NOW()";
+    $valores[] = $pedidoId;
+    
+    $sql = "UPDATE pedidos SET " . implode(", ", $campos) . " WHERE id = ?";
+    $stmt = $pdo->prepare($sql);
+    
+    if (!$stmt->execute($valores)) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Erro ao atualizar pedido']);
+        return;
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'data' => ['id' => $pedidoId],
+        'message' => 'Pedido atualizado com sucesso'
+    ]);
 }
 
 function generateOrderNumber($pdo) {
