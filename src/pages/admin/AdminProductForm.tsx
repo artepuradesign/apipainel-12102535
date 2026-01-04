@@ -227,11 +227,7 @@ const AdminProductForm = () => {
         descricao_curta: formData.descricao_curta,
         destaque: formData.destaque,
         ativo: formData.ativo,
-        imagens: validImages.map((img, index) => ({
-          url: img.url,
-          ordem: index,
-          principal: img.principal,
-        })),
+        imagens: validImages.map((img) => img.url),
         especificacoes: validSpecs,
       };
 
