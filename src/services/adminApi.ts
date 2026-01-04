@@ -88,7 +88,7 @@ export const fetchAdminProduct = async (id: number): Promise<AdminProduct> => {
   return data.data;
 };
 
-export const createAdminProduct = async (product: Partial<AdminProduct>): Promise<{ id: number }> => {
+export const createAdminProduct = async (product: Omit<Partial<AdminProduct>, 'imagens'> & { imagens?: string[] }): Promise<{ id: number }> => {
   const response = await authFetch(`${ADMIN_API_BASE}/produtos.php`, {
     method: 'POST',
     body: JSON.stringify(product),
@@ -103,7 +103,7 @@ export const createAdminProduct = async (product: Partial<AdminProduct>): Promis
   return data.data;
 };
 
-export const updateAdminProduct = async (id: number, product: Partial<AdminProduct>): Promise<void> => {
+export const updateAdminProduct = async (id: number, product: Omit<Partial<AdminProduct>, 'imagens'> & { imagens?: string[] }): Promise<void> => {
   const response = await authFetch(`${ADMIN_API_BASE}/produtos.php?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(product),
