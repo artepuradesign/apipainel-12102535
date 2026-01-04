@@ -169,8 +169,11 @@ const PaymentModal = ({
     email: string,
     method: "pix" | "cartao" | "boleto"
   ): Promise<string> => {
+    // Usar nome do cartão se disponível, senão usar parte do email como nome
+    const nomeCliente = cardData.name || email.split('@')[0] || "Cliente";
+    
     const result = await createPedido({
-      nome_cliente: cardData.name || "Cliente",
+      nome_cliente: nomeCliente,
       email_cliente: email,
       subtotal,
       desconto: discount,
