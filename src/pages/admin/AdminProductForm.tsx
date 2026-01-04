@@ -90,7 +90,7 @@ const AdminProductForm = () => {
   }, []);
 
   useEffect(() => {
-    const token = sessionStorage.getItem("adminToken");
+    const token = localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
     if (!token) {
       navigate("/admin/login");
       return;
@@ -105,7 +105,7 @@ const AdminProductForm = () => {
     try {
       setLoading(true);
       const product = await fetchAdminProduct(Number(id));
-      
+
       setFormData({
         nome: product.nome || "",
         sku: product.sku || "",
@@ -141,6 +141,8 @@ const AdminProductForm = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("adminToken");
     sessionStorage.removeItem("adminUser");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
     navigate("/admin/login");
   };
 

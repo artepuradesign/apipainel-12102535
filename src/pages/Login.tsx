@@ -56,11 +56,15 @@ const Login = () => {
       // Salvar token e dados do usuário
       sessionStorage.setItem("authToken", data.data.token);
       sessionStorage.setItem("authUser", JSON.stringify(data.data.usuario));
+      localStorage.setItem("authToken", data.data.token);
+      localStorage.setItem("authUser", JSON.stringify(data.data.usuario));
 
       // Se for admin, salvar também como adminToken para páginas administrativas
       if (data.data.usuario.tipo === 'admin') {
         sessionStorage.setItem("adminToken", data.data.token);
         sessionStorage.setItem("adminUser", JSON.stringify(data.data.usuario));
+        localStorage.setItem("adminToken", data.data.token);
+        localStorage.setItem("adminUser", JSON.stringify(data.data.usuario));
       }
 
       toast.success("Login realizado com sucesso!");
