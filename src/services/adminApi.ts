@@ -38,29 +38,31 @@ export interface AdminCategory {
 
 // Helper para requisições autenticadas
 const authFetch = async (url: string, options: RequestInit = {}) => {
-  const token = sessionStorage.getItem('adminToken');
-  
+  const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   const response = await fetch(url, {
     ...options,
     headers,
   });
-  
+
   if (response.status === 401) {
     sessionStorage.removeItem('adminToken');
     sessionStorage.removeItem('adminUser');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
     window.location.href = '/admin/login';
     throw new Error('Sessão expirada');
   }
-  
+
   return response;
 };
 

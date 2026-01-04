@@ -57,7 +57,7 @@ const AdminProducts = () => {
   };
 
   useEffect(() => {
-    const token = sessionStorage.getItem("adminToken");
+    const token = localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
     if (!token) {
       navigate("/admin/login");
       return;
@@ -68,6 +68,8 @@ const AdminProducts = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("adminToken");
     sessionStorage.removeItem("adminUser");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
     navigate("/admin/login");
   };
 

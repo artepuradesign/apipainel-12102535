@@ -20,22 +20,29 @@ const AdminDashboard = () => {
   const [adminUser, setAdminUser] = useState<{ name: string; email: string } | null>(null);
 
   useEffect(() => {
-    const token = sessionStorage.getItem("adminToken");
-    const user = sessionStorage.getItem("adminUser");
-    
+    const token = localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
+    const user = localStorage.getItem("adminUser") || sessionStorage.getItem("adminUser");
+
     if (!token) {
       navigate("/admin/login");
       return;
     }
-    
+
     if (user) {
-      setAdminUser(JSON.parse(user));
+      try {
+        const parsed = JSON.parse(user);
+        setAdminUser({ name: parsed.nome ?? parsed.name ?? "Admin", email: parsed.email ?? "" });
+      } catch {
+        // ignore
+      }
     }
   }, [navigate]);
 
   const handleLogout = () => {
     sessionStorage.removeItem("adminToken");
     sessionStorage.removeItem("adminUser");
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
     navigate("/admin/login");
   };
 
