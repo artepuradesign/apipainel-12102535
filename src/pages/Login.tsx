@@ -69,7 +69,7 @@ const Login = () => {
       if (data.data.usuario.tipo === 'admin') {
         navigate("/admin/dashboard");
       } else {
-        navigate("/");
+        navigate("/meus-pedidos");
       }
     } catch (err: any) {
       setLoginError(err.message || 'Erro ao fazer login');
