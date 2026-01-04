@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCart, CartItem } from "@/hooks/useCart";
-import { createPedido } from "@/services/pedidosApi";
+import { createPedido, updatePedidoStatus } from "@/services/pedidosApi";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -48,6 +48,7 @@ const PaymentModal = ({
   const [pixGenerated, setPixGenerated] = useState(false);
   const [copied, setCopied] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
   const [cardData, setCardData] = useState({
     number: "",
@@ -76,36 +77,46 @@ const PaymentModal = ({
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const handleGeneratePix = () => {
+  const handleGeneratePix = async () => {
     if (!isLoggedIn && !guestEmail) {
       toast.error("Por favor, informe seu email para continuar");
       return;
     }
 
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      const customerEmail = isLoggedIn ? userEmail : guestEmail;
+      // Criar pedido com status "aguardando_pagamento"
+      const numero = await saveOrderToAPI(customerEmail!, "pix", "aguardando_pagamento");
+      setOrderNumber(numero);
       setPixGenerated(true);
+      toast.success("Pedido registrado! Aguardando pagamento.");
+    } catch (error) {
+      console.error("Erro ao criar pedido:", error);
+      toast.error("Erro ao registrar pedido. Tente novamente.");
+    } finally {
       setIsProcessing(false);
-    }, 1500);
+    }
   };
 
   const handleConfirmPixPayment = async () => {
-    const customerEmail = isLoggedIn ? userEmail : guestEmail;
-    if (!customerEmail) {
-      toast.error("Por favor, informe seu email");
+    if (!orderNumber) {
+      toast.error("Erro: pedido não encontrado");
       return;
     }
-    
+
     setIsProcessing(true);
     try {
-      const orderNumber = await saveOrderToAPI(customerEmail, "pix");
+      // Atualizar status para "pago"
+      await updatePedidoStatus(orderNumber, "pago");
       clearCart();
       onClose();
       localStorage.setItem("lastOrderNumber", orderNumber);
+      toast.success("Pagamento confirmado!");
       navigate("/pedido-confirmado");
     } catch (error) {
-      console.error("Erro ao salvar pedido:", error);
-      toast.error("Erro ao processar pedido. Tente novamente.");
+      console.error("Erro ao confirmar pagamento:", error);
+      toast.error("Erro ao confirmar pagamento. Tente novamente.");
     } finally {
       setIsProcessing(false);
     }
@@ -151,15 +162,20 @@ const PaymentModal = ({
     setIsProcessing(true);
     try {
       const customerEmail = isLoggedIn ? userEmail : guestEmail;
-      const orderNumber = await saveOrderToAPI(customerEmail!, "cartao");
+      // Criar pedido com status "aguardando_pagamento" para cartão também
+      const numero = await saveOrderToAPI(customerEmail!, "cartao", "aguardando_pagamento");
+      
+      // Simular aprovação do cartão e atualizar para "pago"
+      await updatePedidoStatus(numero, "pago");
+      
       clearCart();
       onClose();
-      localStorage.setItem("lastOrderNumber", orderNumber);
-      toast.success("Pedido enviado para aprovação!");
+      localStorage.setItem("lastOrderNumber", numero);
+      toast.success("Pagamento aprovado!");
       navigate("/pedido-confirmado");
     } catch (error) {
-      console.error("Erro ao salvar pedido:", error);
-      toast.error("Erro ao processar pedido. Tente novamente.");
+      console.error("Erro ao processar pagamento:", error);
+      toast.error("Erro ao processar pagamento. Tente novamente.");
     } finally {
       setIsProcessing(false);
     }
@@ -167,11 +183,12 @@ const PaymentModal = ({
 
   const saveOrderToAPI = async (
     email: string,
-    method: "pix" | "cartao" | "boleto"
+    method: "pix" | "cartao" | "boleto",
+    status: "aguardando_pagamento" | "pago" = "aguardando_pagamento"
   ): Promise<string> => {
     // Usar nome do cartão se disponível, senão usar parte do email como nome
     const nomeCliente = cardData.name || email.split('@')[0] || "Cliente";
-    
+
     const result = await createPedido({
       nome_cliente: nomeCliente,
       email_cliente: email,
@@ -180,6 +197,7 @@ const PaymentModal = ({
       frete: shipping,
       total: finalTotal,
       forma_pagamento: method,
+      status,
       itens: cartItems.map((item) => ({
         produto_id: !isNaN(Number(item.id)) ? Number(item.id) : undefined,
         nome: item.name,
@@ -192,7 +210,7 @@ const PaymentModal = ({
 
     // Também salvar no localStorage para compatibilidade
     localStorage.setItem("customerEmail", email);
-    
+
     return result.numero;
   };
 
@@ -269,6 +287,17 @@ const PaymentModal = ({
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {orderNumber && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                      <p className="text-sm text-green-800">
+                        Pedido <strong>#{orderNumber}</strong> registrado!
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Status: Aguardando pagamento
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex flex-col items-center">
                     <div className="w-40 h-40 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed">
                       <div className="text-center">
@@ -316,8 +345,16 @@ const PaymentModal = ({
                     onClick={handleConfirmPixPayment}
                     className="w-full"
                     size="lg"
+                    disabled={isProcessing}
                   >
-                    Já realizei o pagamento
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Confirmando...
+                      </>
+                    ) : (
+                      "Já realizei o pagamento"
+                    )}
                   </Button>
                 </div>
               )}

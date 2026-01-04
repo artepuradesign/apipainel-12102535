@@ -31,7 +31,7 @@ export interface Pedido {
   frete: number;
   total: number;
   forma_pagamento: 'pix' | 'cartao' | 'boleto';
-  status: 'pendente' | 'pago' | 'preparando' | 'enviado' | 'entregue' | 'cancelado';
+  status: 'aguardando_pagamento' | 'pendente' | 'pago' | 'preparando' | 'enviado' | 'entregue' | 'cancelado';
   codigo_rastreio?: string;
   observacoes?: string;
   created_at: string;
@@ -59,6 +59,7 @@ export interface CreatePedidoData {
   frete?: number;
   total: number;
   forma_pagamento: 'pix' | 'cartao' | 'boleto';
+  status?: 'aguardando_pagamento' | 'pendente' | 'pago';
   observacoes?: string;
   itens: Array<{
     id?: number;
@@ -129,10 +130,35 @@ export const fetchPedidoByNumero = async (numero: string): Promise<Pedido | null
   }
 
   const result = await response.json();
-  
+
   if (!result.success) {
     throw new Error(result.error || 'Erro ao buscar pedido');
   }
 
   return result.data;
+};
+
+// Atualizar status do pedido
+export const updatePedidoStatus = async (
+  numero: string,
+  status: 'aguardando_pagamento' | 'pago' | 'pendente' | 'preparando' | 'enviado' | 'entregue' | 'cancelado'
+): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/pedidos.php?numero=${encodeURIComponent(numero)}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao atualizar pedido');
+  }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || 'Erro ao atualizar pedido');
+  }
 };

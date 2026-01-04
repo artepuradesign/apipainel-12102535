@@ -125,7 +125,8 @@ const Produto = () => {
       color: selectedColor || '',
       capacity: selectedCapacity || '',
     });
-    navigate('/checkout');
+    toast.success("Produto adicionado ao carrinho!");
+    navigate('/carrinho');
   };
 
   const handleCalculateShipping = () => {
